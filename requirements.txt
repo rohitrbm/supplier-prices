@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+requests
+# add any other dependencies here
