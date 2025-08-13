@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-requests
 aiohttp
-# add any other dependencies here
+requests
+retrying
