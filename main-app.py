@@ -41,14 +41,14 @@ async def fetch_all_data(endpoint, api_token, slack_webhook_url, supplier):
         page = 0
         while True:
             try:
-                logging.info(f"Fetching data for page {page} with supplier {supplier}...")
+              # logging.info(f"Fetching data for page {page} with supplier {supplier}...")
                 data = await fetch_data(endpoint, session, page, api_token, supplier)
                 if not data:
                     break
                 all_data.append(data)
                 page += 1
             except Exception as e:
-                logging.error(f"Error fetching data on page {page}: {e}")
+               # logging.error(f"Error fetching data on page {page}: {e}")
                 break
 
     duration = time.time() - start_time
@@ -112,10 +112,10 @@ def upload_to_ftp(local_file_path, ftp_host, ftp_port, ftp_user, ftp_pass, remot
             with open(local_file_path, 'rb') as file:
                 ftp.storbinary(f'STOR {remote_file}', file)
 
-            logging.info(f"✅ File uploaded to FTP: {remote_file_path}")
+           # logging.info(f"✅ File uploaded to FTP: {remote_file_path}")
             return True
     except Exception as e:
-        logging.error(f"❌ FTP upload failed: {str(e)}")
+      #  logging.error(f"❌ FTP upload failed: {str(e)}")
         return False
 
 def send_to_slack(webhook_url, message):
@@ -123,11 +123,11 @@ def send_to_slack(webhook_url, message):
         payload = {"text": message}
         response = requests.post(webhook_url, json=payload)
         if response.status_code != 200:
-            logging.error(f"Failed to send Slack message: {response.text}")
+          #  logging.error(f"Failed to send Slack message: {response.text}")
             return False
         return True
     except Exception as e:
-        logging.error(f"Error sending Slack message: {e}")
+       # logging.error(f"Error sending Slack message: {e}")
         return False
 
 # ----------- CONFIGURATION -----------
@@ -163,31 +163,31 @@ async def process_products(
         filename = f"{supplier}_prices.csv"
 
         # Generate token
-        logging.info("🔐 Generating API token...")
+    #  logging.info("🔐 Generating API token...")
         api_token = generate_token(CLIENT_ID, CLIENT_SECRET)
 
         # Fetch product data
-        logging.info(f"📦 Fetching all product data for supplier: {supplier}...")
+      #  logging.info(f"📦 Fetching all product data for supplier: {supplier}...")
         all_data = await fetch_all_data(ENDPOINT, api_token, SLACK_WEBHOOK_URL, supplier)
         if not all_data:
             raise HTTPException(status_code=404, detail=f"No data found for supplier: {supplier}")
 
         # Write to CSV
-        logging.info("📄 Writing data to CSV file...")
+       # logging.info("📄 Writing data to CSV file...")
         if not write_to_csv(all_data, filename):
             raise HTTPException(status_code=500, detail="Failed to create CSV file")
 
         # Upload to FTP
-        logging.info("📤 Uploading file to FTP...")
+      #  logging.info("📤 Uploading file to FTP...")
         if not upload_to_ftp(filename, ftp_host, ftp_port, ftp_user, ftp_pass, remote_path):
             raise HTTPException(status_code=500, detail="Failed to upload file to FTP")
 
         # Cleanup
         try:
             os.remove(filename)
-            logging.info(f"🗑️ Removed local file: {filename}")
+        #    logging.info(f"🗑️ Removed local file: {filename}")
         except Exception as e:
-            logging.warning(f"Could not delete local file: {e}")
+         #   logging.warning(f"Could not delete local file: {e}")
 
         # Notify
         success_message = f"✅ Successfully processed products for supplier '{supplier}'. File uploaded to FTP: {remote_path}"
@@ -207,7 +207,7 @@ async def process_products(
     except Exception as e:
         error_message = f"❌ Error processing products for supplier '{supplier}': {str(e)}"
         send_to_slack(SLACK_WEBHOOK_URL, error_message)
-        logging.error(error_message)
+       # logging.error(error_message)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # ----------- RUN SERVER -----------
