@@ -187,6 +187,7 @@ async def process_products(
             os.remove(filename)
         #    logging.info(f"🗑️ Removed local file: {filename}")
         except Exception as e:
+            pass
          #   logging.warning(f"Could not delete local file: {e}")
 
         # Notify
