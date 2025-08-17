@@ -194,7 +194,7 @@ async def process_products(
         send_to_slack(SLACK_WEBHOOK_URL, success_message)
 
         return {
-            "message": "Products processed and uploaded successfully",
+            "message": "Prices processed and updated successfully",
             "supplier": supplier,
             "filename": filename,
             "total_pages": len(all_data),
@@ -209,6 +209,83 @@ async def process_products(
         send_to_slack(SLACK_WEBHOOK_URL, error_message)
        # logging.error(error_message)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.post("/fetch-products")
+async def fetch_products(
+    supplier: str = Query(..., description="Supplier name to filter products"),
+    ftp_host: str = Query(..., description="FTP host"),
+    ftp_port: int = Query(22, description="FTP port, default is 22"),
+    ftp_user: str = Query(..., description="FTP username"),
+    ftp_pass: str = Query(..., description="FTP password"),
+    remote_path: str = Query(..., description="Remote FTP path to upload the file, e.g. /upload/myfile.csv")
+):
+    try:
+        filename = f"{supplier}_products.csv"
+
+        # Generate token
+        api_token = generate_token(CLIENT_ID, CLIENT_SECRET)
+
+        # Fetch product data
+        logging.info(f"📦 Fetching all product data for supplier: {supplier}...")
+        all_data = await fetch_all_data(ENDPOINT, api_token, SLACK_WEBHOOK_URL, supplier)
+        if not all_data:
+            raise HTTPException(status_code=404, detail=f"No data found for supplier: {supplier}")
+
+        # Write to CSV (with more product info)
+
+        csv_data = [["GTIN", "SKU","product_name", "Supplier", "Brand", "Tax", "Category", "Image"]]
+        for product_list in all_data:
+            for item in product_list:
+                Brand = item.get("brand_name")
+                Tax = item.get("tax_in_percentage")
+                suppliers_data = item.get("suppliers", [])
+                if suppliers_data and isinstance(suppliers_data, list):
+                    supplier_info = suppliers_data[0]
+                    supplier_name = supplier_info.get("name")
+                for variant in item.get("variants_list", []):
+                    article_ean = variant.get("article_ean")
+                    seller_sku_id = variant.get("seller_sku_id")
+                    name = variant.get("name", {}).get("GERMAN", "")
+                    category_list = variant.get("category_tree", {}).get("GERMAN", [])
+                    category = category_list[0].strip() if category_list else ""
+                    Image = variant.get("multimedia", [{}])[0].get("source_url", "")
+                    if article_ean:
+                        csv_data.append([article_ean,seller_sku_id, name, supplier_name,Brand, Tax, category, Image])
+        with open(filename, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
+
+        # Upload to FTP
+
+        if not upload_to_ftp(filename, ftp_host, ftp_port, ftp_user, ftp_pass, remote_path):
+            raise HTTPException(status_code=500, detail="Failed to upload file to FTP")
+
+        # Cleanup
+        try:
+            os.remove(filename)
+            logging.info(f"🗑️ Removed local file: {filename}")
+        except Exception as e:
+            logging.warning(f"Could not delete local file: {e}")
+
+
+
+        return {
+            "message": "Products fetched and uploaded successfully",
+            "supplier": supplier,
+            "filename": filename,
+            "total_pages": len(all_data),
+            "ftp_destination": remote_path,
+            "status": "completed"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_message = f"❌ Error fetching products for supplier '{supplier}': {str(e)}"
+        send_to_slack(SLACK_WEBHOOK_URL, error_message)
+        logging.error(error_message)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 # ----------- RUN SERVER -----------
 
