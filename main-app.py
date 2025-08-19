@@ -239,6 +239,12 @@ async def fetch_products(
             for item in product_list:
                 Brand = item.get("brand_name")
                 Tax = item.get("tax_in_percentage")
+                if Tax == 2.6:
+                    TaxDesc = "Ermässigter Steuersatz"
+                elif Tax == 8.1:
+                    TaxDesc = "Normaler Steuersatz"
+                else:
+                    TaxDesc = Tax
                 suppliers_data = item.get("suppliers", [])
                 if suppliers_data and isinstance(suppliers_data, list):
                     supplier_info = suppliers_data[0]
@@ -251,7 +257,7 @@ async def fetch_products(
                     category = category_list[0].strip() if category_list else ""
                     Image = variant.get("multimedia", [{}])[0].get("source_url", "")
                     if article_ean:
-                        csv_data.append([article_ean,seller_sku_id, name, supplier_name,Brand, Tax, category, Image])
+                        csv_data.append([article_ean,seller_sku_id, name, supplier_name,Brand, TaxDesc, category, Image])
         with open(filename, mode='w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerows(csv_data)
