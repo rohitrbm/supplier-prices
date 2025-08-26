@@ -246,16 +246,18 @@ async def fetch_products(
                 else:
                     TaxDesc = Tax
                 suppliers_data = item.get("suppliers", [])
-                if suppliers_data and isinstance(suppliers_data, list):
+                supplier_name = ""
+                if suppliers_data and isinstance(suppliers_data, list) and len(suppliers_data) > 0:
                     supplier_info = suppliers_data[0]
-                    supplier_name = supplier_info.get("name")
+                    supplier_name = supplier_info.get("name", "")
                 for variant in item.get("variants_list", []):
                     article_ean = variant.get("article_ean")
                     seller_sku_id = variant.get("seller_sku_id")
                     name = variant.get("name", {}).get("GERMAN", "")
                     category_list = variant.get("category_tree", {}).get("GERMAN", [])
                     category = category_list[0].strip() if category_list else ""
-                    Image = variant.get("multimedia", [{}])[0].get("source_url", "")
+                    multimedia = variant.get("multimedia") or []
+                    Image = multimedia[0].get("source_url", "") if multimedia else ""
                     if article_ean:
                         csv_data.append([article_ean,seller_sku_id, name, supplier_name,Brand, TaxDesc, category, Image])
         with open(filename, mode='w', newline='', encoding='utf-8') as f:
